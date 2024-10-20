@@ -16,9 +16,20 @@ public class HttpServer {
     public void start() {
         try (ServerSocket serverSocket = new ServerSocket(port)) {
             System.out.println("Сервер запущен на порту: " + port);
-            try (Socket socket = serverSocket.accept()) {
-                byte[] buffer = new byte[8192];
-                int n = socket.getInputStream().read(buffer);
+            while (true) {
+                Socket socket = serverSocket.accept();
+                new Thread(() -> handleRequest(socket)).start();
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void handleRequest(Socket socket) {
+        try (socket) {
+            byte[] buffer = new byte[8192];
+            int n = socket.getInputStream().read(buffer);
+            if (n > 0) {
                 String rawRequest = new String(buffer, 0, n);
                 HttpRequest request = new HttpRequest(rawRequest);
                 request.info(true);
