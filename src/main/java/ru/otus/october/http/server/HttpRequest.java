@@ -2,12 +2,16 @@ package ru.otus.october.http.server;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.logging.Logger;
 
 public class HttpRequest {
+    private static final Logger logger = Logger.getLogger(HttpRequest.class.getName());
+
     private String rawRequest;
     private HttpMethod method;
     private String uri;
     private Map<String, String> parameters;
+    private Map<String, String> headers;
     private String body;
     private Exception exception;
 
@@ -33,6 +37,8 @@ public class HttpRequest {
 
     public HttpRequest(String rawRequest) {
         this.rawRequest = rawRequest;
+        this.parameters = new HashMap<>();
+        this.headers = new HashMap<>();
         this.parse();
     }
 
@@ -45,11 +51,24 @@ public class HttpRequest {
     }
 
     private void parse() {
-        int startIndex = rawRequest.indexOf(' ');
-        int endIndex = rawRequest.indexOf(' ', startIndex + 1);
-        uri = rawRequest.substring(startIndex + 1, endIndex);
-        method = HttpMethod.valueOf(rawRequest.substring(0, startIndex));
-        parameters = new HashMap<>();
+        String[] requestParts = rawRequest.split("\r\n\r\n", 2);
+        String requestLineAndHeaders = requestParts[0];
+        body = requestParts.length > 1 ? requestParts[1] : "";
+
+        String[] requestLines = requestLineAndHeaders.split("\r\n");
+        String requestLine = requestLines[0];
+        String[] methodUri = requestLine.split(" ");
+
+        uri = methodUri[1];
+        method = HttpMethod.valueOf(methodUri[0]);
+
+        for (int i = 1; i < requestLines.length; i++) {
+            String[] header = requestLines[i].split(": ", 2);
+            if (header.length == 2) {
+                headers.put(header[0], header[1]);
+            }
+        }
+
         if (uri.contains("?")) {
             String[] elements = uri.split("[?]");
             uri = elements[0];
@@ -59,18 +78,16 @@ public class HttpRequest {
                 parameters.put(keyValue[0], keyValue[1]);
             }
         }
-        if (method == HttpMethod.POST) {
-            this.body = rawRequest.substring(rawRequest.indexOf("\r\n\r\n") + 4);
-        }
     }
 
     public void info(boolean debug) {
         if (debug) {
-            System.out.println(rawRequest);
+            logger.info(rawRequest);
         }
-        System.out.println("Method: " + method);
-        System.out.println("URI: " + uri);
-        System.out.println("Parameters: " + parameters);
-        System.out.println("Body: "  + body);
+        logger.info("Method: " + method);
+        logger.info("URI: " + uri);
+        logger.info("Parameters: " + parameters);
+        logger.info("Headers: " + headers);
+        logger.info("Body: "  + body);
     }
 }
