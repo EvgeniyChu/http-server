@@ -1,16 +1,23 @@
 package ru.otus.october.http.server;
 
+import ru.otus.october.http.server.Dispatcher;
+import ru.otus.october.http.server.HttpRequest;
+
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public class HttpServer {
     private int port;
     private Dispatcher dispatcher;
+    private ExecutorService executorService;
 
     public HttpServer(int port) {
         this.port = port;
         this.dispatcher = new Dispatcher();
+        this.executorService = Executors.newFixedThreadPool(10);
     }
 
     public void start() {
@@ -18,7 +25,7 @@ public class HttpServer {
             System.out.println("Сервер запущен на порту: " + port);
             while (true) {
                 Socket socket = serverSocket.accept();
-                new Thread(() -> handleRequest(socket)).start();
+                executorService.submit(() -> handleRequest(socket));
             }
         } catch (IOException e) {
             e.printStackTrace();
@@ -38,5 +45,9 @@ public class HttpServer {
         } catch (IOException e) {
             e.printStackTrace();
         }
+    }
+
+    public void stop() {
+        executorService.shutdown();
     }
 }
